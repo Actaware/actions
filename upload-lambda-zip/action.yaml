@@ -1,0 +1,37 @@
+name: Upload lambda files
+description: Create a zip of lambda files and upload to S3. Outputs S3 object version
+inputs:
+  lambda-files-path:
+    description: path to lambda files
+    required: true
+  lambda-file-name:
+    description: lambda name
+    required: true
+  s3-bucket-name:
+    description: S3 bucket name
+    required: true
+  s3-lambdas-location:
+    description: S3 location key for lambdas
+    required: true
+
+outputs:
+  s3-object-version:
+    description: VersionId of uploaded object
+    value: ${{ steps.lambda-zip-to-s3.outputs.version-id }}
+
+runs:
+  using: composite
+  steps:
+    - name: Create lambda files zip
+      shell: bash
+      run: |
+        sudo apt install zip
+        zip -r ${{ inputs.lambda-file-name }} ${{ inputs.lambda-files-path }} -x "*pycache*"
+
+    - name: Upload lambda files zip to S3
+      id: "lambda-zip-to-s3"
+      uses: "./.github/actions/s3-upload"
+      with:
+        file-path: ${{ inputs.lambda-file-name }}
+        s3-bucket-name: ${{ inputs.s3-bucket-name }}
+        s3-object-key: "${{ inputs.s3-lambdas-location }}${{ inputs.lambda-file-name }}"

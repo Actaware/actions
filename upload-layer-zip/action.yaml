@@ -1,0 +1,46 @@
+name: Upload layer files
+description: Create a zip of layer files and upload to S3. Outputs S3 object version
+inputs:
+  packages:
+    description: packages to install
+    required: true
+  layer-file-name:
+    description: Layer name
+    required: true
+  s3-bucket-name:
+    description: S3 bucket name
+    required: true
+  s3-layers-location:
+    description: S3 location key for layers
+    required: true
+
+outputs:
+  s3-object-version:
+    description: VersionId of uploaded object
+    value: ${{ steps.dependencies-zip-to-s3.outputs.version-id }}
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Create dependencies zip
+      shell: bash
+      run: |
+        sudo apt install zip
+        mkdir -p ./python
+        python -m pip install --upgrade pip
+        pip install --platform manylinux2014_x86_64 --only-binary=:all: ${{ inputs.packages }} -t ./python
+        zip -r ${{ inputs.layer-file-name }} ./python -x "*pycache*"
+        rm -rf ./python
+
+    - name: Upload dependencies zip to S3
+      id: "dependencies-zip-to-s3"
+      uses: "./.github/actions/s3-upload"
+      with:
+        file-path: ${{ inputs.layer-file-name }}
+        s3-bucket-name: ${{ inputs.s3-bucket-name }}
+        s3-object-key: "${{ inputs.s3-layers-location }}${{ inputs.layer-file-name }}"

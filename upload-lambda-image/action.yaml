@@ -1,0 +1,52 @@
+name: Upload lambda image to ecr
+description: Create a docker image of lambda files and upload to ECR. Outputs image url
+inputs:
+  dockerfile-path:
+    description: path to the dockerfile
+    required: true
+  ecr-repository-name:
+    description: name of the ECR repository
+    required: true
+  image-name:
+    description: name of the image
+    required: true
+  aws-account-id:
+    description: id of aws account
+    required: true
+  aws-region:
+    description: aws region name
+    required: true
+
+outputs:
+  ecr-image-url:
+    description: Url of uploaded image
+    value: ${{ steps.lambda-image-to-ecr.outputs.image-url }}
+
+runs:
+  using: composite
+  steps:
+    - name: Create lamda image
+      shell: bash
+      run: docker build . -t "${{ inputs.image-name }}" -f "${{ inputs.dockerfile-path }}"
+
+    - name: Create ecr tags
+      id: "ecr-tags"
+      shell: bash
+      run: |
+        base_ecr_tag="${{ inputs.aws-account-id }}.dkr.ecr.${{ inputs.aws-region }}.amazonaws.com/${{ inputs.ecr-repository-name }}"
+        timestamp="$(date +%F_%H-%M-%S)"
+        ecr_date_tag="${base_ecr_tag}:${timestamp}"
+        ecr_latest_tag="${base_ecr_tag}:latest"
+
+        echo "ecr_date_tag=$ecr_date_tag" >> $GITHUB_OUTPUT
+        echo "ecr_latest_tag=$ecr_latest_tag" >> $GITHUB_OUTPUT
+
+    - name: Push image to ECR
+      shell: bash
+      id: "lambda-image-to-ecr"
+      run: |
+        docker image tag ${{ inputs.image-name }} ${{ steps.ecr-tags.outputs.ecr_date_tag }}
+        docker image tag ${{ inputs.image-name }} ${{ steps.ecr-tags.outputs.ecr_latest_tag }}
+
+        docker push ${{ steps.ecr-tags.outputs.ecr_date_tag }}
+        docker push ${{ steps.ecr-tags.outputs.ecr_latest_tag }}

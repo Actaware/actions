@@ -1,0 +1,28 @@
+name: Get S3 object version
+description: Outputs the latest VersionId of the specified object
+inputs:
+  s3-bucket-name:
+    description: S3 bucket name
+    required: true
+  s3-object-key:
+    description: S3 key
+    required: true
+
+outputs:
+  version-id:
+    description: VersionId of uploaded object
+    value: ${{ steps.s3-upload.outputs.version-id }}
+
+runs:
+  using: composite
+  steps:
+    - name: Upload file to S3
+      id: "s3-upload"
+      shell: bash
+      run: |
+        version_id=$(aws s3api list-object-versions \
+          --bucket ${{ inputs.s3-bucket-name }} \
+          --prefix ${{ inputs.s3-object-key }} \
+          --query 'Versions[?IsLatest].VersionId' \
+          --output text)
+        echo "version-id=$version_id" >> $GITHUB_OUTPUT

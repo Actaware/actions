@@ -1,0 +1,32 @@
+name: Upload object to S3 bucket
+description: Upload object and output VersionId
+inputs:
+  file-path:
+    description: path to file
+    required: true
+  s3-bucket-name:
+    description: S3 bucket name
+    required: true
+  s3-object-key:
+    description: S3 key
+    required: true
+
+outputs:
+  version-id:
+    description: VersionId of uploaded object
+    value: ${{ steps.s3-upload.outputs.version-id }}
+
+runs:
+  using: composite
+  steps:
+    - name: Upload file to S3
+      id: 's3-upload'
+      shell: bash
+      run: |
+        version_id=$(aws s3api put-object \
+          --bucket ${{ inputs.s3-bucket-name }} \
+          --key ${{ inputs.s3-object-key }} \
+          --body ${{ inputs.file-path }} \
+          --query VersionId \
+          --output text)
+        echo "version-id=$version_id" >> $GITHUB_OUTPUT
