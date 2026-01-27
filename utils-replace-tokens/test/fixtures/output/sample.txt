@@ -1,0 +1,3 @@
+API=abc123
+HOST=example.com
+MISSING=#{NOT_SET}

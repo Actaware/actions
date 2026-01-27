@@ -1,0 +1,30 @@
+name: 'utils-replace-tokens'
+description: 'Replace token placeholders in files using secrets JSON'
+inputs:
+  files:
+    description: 'File globs to process (newline or space-separated). Example: ./config/*.json ./test/**/*.js'
+    required: true
+  start-token:
+    description: 'Token prefix (default: #{)'
+    required: false
+    default: '#{'
+  end-token:
+    description: 'Token suffix (default: })'
+    required: false
+    default: '}'
+  secrets-json:
+    description: 'JSON object of secrets to inject (e.g. ${{ toJson(github.secrets) }})'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Replace tokens
+      shell: bash
+      run: ${{ github.action_path }}/replace-tokens.py
+      env:
+        INPUT_FILES: ${{ inputs.files }}
+        INPUT_START_TOKEN: ${{ inputs.start-token }}
+        INPUT_END_TOKEN: ${{ inputs.end-token }}
+        INPUT_SECRETS_JSON: ${{ inputs.secrets-json }}

@@ -1,0 +1,57 @@
+name: "CloudFormation Deploy (dynamic params)"
+description: "Deploy CloudFormation stack; builds parameter-overrides from a config file and/or inline overrides; deletes stack in ROLLBACK_COMPLETE then redeploys."
+inputs:
+  stack_name:
+    description: "CloudFormation stack name to create or update."
+    required: true
+  template_file:
+    description: "Path to the CloudFormation template file (relative to repo root)."
+    required: true
+  region:
+    description: "AWS region for the deployment."
+    required: true
+
+  capabilities:
+    description: "Space-separated CloudFormation capabilities to pass to the deploy command."
+    required: false
+    default: "CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND"
+
+  # New: read parameters from file
+  parameters_file:
+    description: "Path to file with Key=Value lines (comments with # allowed)"
+    required: false
+    default: ""
+
+  # Optional: inline extra overrides (space-separated Key=Value pairs)
+  parameter_overrides:
+    description: "Space-separated Key=Value pairs to pass as parameter overrides."
+    required: false
+    default: ""
+
+  no_fail_on_empty_changeset:
+    description: "If true, passes --no-fail-on-empty-changeset."
+    required: false
+    default: "true"
+
+  delete_on_rollback_complete:
+    description: "If true, deletes the stack when in ROLLBACK_COMPLETE before redeploying."
+    required: false
+    default: "true"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Deploy CloudFormation
+      shell: bash
+      run: |
+        set -euo pipefail
+        bash "${{ github.action_path }}/deploy-cf.sh"
+      env:
+        AWS_REGION: ${{ inputs.region }}
+        CFN_STACK_NAME: ${{ inputs.stack_name }}
+        CFN_TEMPLATE_FILE: ${{ inputs.template_file }}
+        CFN_CAPABILITIES: ${{ inputs.capabilities }}
+        CFN_PARAMETERS_FILE: ${{ inputs.parameters_file }}
+        CFN_PARAMETER_OVERRIDES: ${{ inputs.parameter_overrides }}
+        CFN_NO_FAIL_ON_EMPTY_CHANGESET: ${{ inputs.no_fail_on_empty_changeset }}
+        CFN_DELETE_ON_ROLLBACK_COMPLETE: ${{ inputs.delete_on_rollback_complete }}
