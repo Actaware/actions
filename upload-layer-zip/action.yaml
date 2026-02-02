@@ -1,6 +1,9 @@
 name: Upload layer files
 description: Create a zip of layer files and upload to S3. Outputs S3 object version
 inputs:
+  python-version:
+    description: version of python to use
+    required: true
   packages:
     description: packages to install
     required: true
@@ -25,7 +28,7 @@ runs:
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
-        python-version: "3.11"
+        python-version: ${{ inputs.python-version }}
 
     - name: Create dependencies zip
       shell: bash
