@@ -3,7 +3,12 @@ description: Create a zip of layer files and upload to S3. Outputs S3 object ver
 inputs:
   python-version:
     description: version of python to use
-    required: true
+    required: false
+    default: "3.11"
+  platform:
+    description: platform for python wheels
+    required: false
+    default: "manylinux2014_x86_64"
   packages:
     description: packages to install
     required: true
@@ -36,7 +41,7 @@ runs:
         sudo apt install zip
         mkdir -p ./python
         python -m pip install --upgrade pip
-        pip install --platform manylinux2014_x86_64 --only-binary=:all: ${{ inputs.packages }} -t ./python
+        pip install --platform ${{ inputs.platform }} --only-binary=:all: ${{ inputs.packages }} -t ./python
         zip -r ${{ inputs.layer-file-name }} ./python -x "*pycache*"
         rm -rf ./python
 
