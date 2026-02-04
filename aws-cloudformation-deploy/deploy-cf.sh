@@ -11,7 +11,147 @@ INLINE_OVERRIDES="${CFN_PARAMETER_OVERRIDES:-}"
 NO_FAIL_EMPTY="${CFN_NO_FAIL_ON_EMPTY_CHANGESET:-true}"
 DELETE_ON_RB_COMPLETE="${CFN_DELETE_ON_ROLLBACK_COMPLETE:-true}"
 
+TAG_APPLICATION="${CFN_TAG_APPLICATION:-}"
+TAG_ENVIRONMENT="${CFN_TAG_ENVIRONMENT:-}"
+TAG_OWNER="${CFN_TAG_OWNER:-}"
+TAG_COST_CENTER="${CFN_TAG_COST_CENTER:-}"
+TAG_MANAGED_BY="${CFN_TAG_MANAGED_BY:-}"
+TAG_REPOSITORY="${CFN_TAG_REPOSITORY:-}"
+
 aws_cmd() { aws --region "$REGION" "$@"; }
+
+trim() {
+  local s="${1-}"
+  s="${s#"${s%%[![:space:]]*}"}"
+  s="${s%"${s##*[![:space:]]}"}"
+  printf '%s' "$s"
+}
+
+has_param_override() {
+  local key="$1"
+  shift
+  local kv
+  for kv in "$@"; do
+    if [[ "$kv" == "$key="* ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+get_param_override_value() {
+  local key="$1"
+  shift
+  local kv
+  local last=""
+  for kv in "$@"; do
+    if [[ "$kv" == "$key="* ]]; then
+      last="${kv#*=}"
+    fi
+  done
+  printf '%s' "$last"
+}
+
+upsert_param_override() {
+  local key="$1"
+  local value="$2"
+  shift 2
+  local -a out=()
+  local kv
+  for kv in "$@"; do
+    if [[ "$kv" == "$key="* ]]; then
+      continue
+    fi
+    out+=( "$kv" )
+  done
+  out+=( "${key}=${value}" )
+  printf '%s\0' "${out[@]}"
+}
+
+validate_and_enforce_required_overrides() {
+  local -a params=( "$@" )
+
+  # Prefer explicit tag inputs (when provided) by upserting them into the final overrides.
+  # (Last key wins for aws cloudformation deploy.)
+  local -a next=()
+  if [[ -n "$(trim "$TAG_APPLICATION")" ]]; then
+    next=()
+    while IFS= read -r -d '' item; do next+=( "$item" ); done < <(upsert_param_override "TagApplication" "$TAG_APPLICATION" "${params[@]}")
+    params=( "${next[@]}" )
+  fi
+  if [[ -n "$(trim "$TAG_ENVIRONMENT")" ]]; then
+    next=()
+    while IFS= read -r -d '' item; do next+=( "$item" ); done < <(upsert_param_override "TagEnvironment" "$TAG_ENVIRONMENT" "${params[@]}")
+    params=( "${next[@]}" )
+  fi
+  if [[ -n "$(trim "$TAG_OWNER")" ]]; then
+    next=()
+    while IFS= read -r -d '' item; do next+=( "$item" ); done < <(upsert_param_override "TagOwner" "$TAG_OWNER" "${params[@]}")
+    params=( "${next[@]}" )
+  fi
+  if [[ -n "$(trim "$TAG_COST_CENTER")" ]]; then
+    next=()
+    while IFS= read -r -d '' item; do next+=( "$item" ); done < <(upsert_param_override "TagCostCenter" "$TAG_COST_CENTER" "${params[@]}")
+    params=( "${next[@]}" )
+  fi
+  if [[ -n "$(trim "$TAG_MANAGED_BY")" ]]; then
+    next=()
+    while IFS= read -r -d '' item; do next+=( "$item" ); done < <(upsert_param_override "TagManagedBy" "$TAG_MANAGED_BY" "${params[@]}")
+    params=( "${next[@]}" )
+  fi
+
+  # Auto-fill TagRepository from the current GitHub repo URL when possible.
+  local derived_repo="${TAG_REPOSITORY:-}"
+  derived_repo="$(trim "$derived_repo")"
+  if [[ -z "$derived_repo" ]]; then
+    if [[ -n "${GITHUB_SERVER_URL:-}" && -n "${GITHUB_REPOSITORY:-}" ]]; then
+      derived_repo="${GITHUB_SERVER_URL%/}/${GITHUB_REPOSITORY}"
+    fi
+  fi
+  if [[ -n "$(trim "$derived_repo")" ]]; then
+    next=()
+    while IFS= read -r -d '' item; do next+=( "$item" ); done < <(upsert_param_override "TagRepository" "$derived_repo" "${params[@]}")
+    params=( "${next[@]}" )
+  fi
+
+  # Auto-fill TagStackName from the stack name input when not provided.
+  if ! has_param_override "TagStackName" "${params[@]}"; then
+    params+=( "TagStackName=$STACK_NAME" )
+  fi
+
+  local -a required=(
+    TagApplication
+    TagEnvironment
+    TagOwner
+    TagCostCenter
+    TagManagedBy
+    TagRepository
+    TagStackName
+  )
+
+  local key raw value
+  for key in "${required[@]}"; do
+    if ! has_param_override "$key" "${params[@]}"; then
+      echo "Missing required parameter override: ${key} (pass via tag_* inputs, parameters_file, or parameter_overrides)" >&2
+      exit 1
+    fi
+    raw="$(get_param_override_value "$key" "${params[@]}")"
+    value="$(trim "$raw")"
+    if [[ -z "$value" ]]; then
+      echo "Required parameter override ${key} must not be empty." >&2
+      exit 1
+    fi
+  done
+
+  value="$(trim "$(get_param_override_value "TagRepository" "${params[@]}")")"
+  if [[ ! "$value" =~ ^https?:// ]]; then
+    echo "Required parameter override TagRepository must be an http(s) URL (got: ${value})." >&2
+    exit 1
+  fi
+
+  # Print as a NUL-delimited stream so caller can safely read into array
+  printf '%s\0' "${params[@]}"
+}
 
 get_stack_status() {
   set +e
@@ -99,8 +239,14 @@ deploy_stack() {
     params+=( "$item" )
   done < <(build_parameter_overrides)
 
-  if [[ ${#params[@]} -gt 0 ]]; then
-    args+=( --parameter-overrides "${params[@]}" )
+  # Enforce required tag parameters for all deployments, and auto-fill TagStackName.
+  local -a validated_params=()
+  while IFS= read -r -d '' item; do
+    validated_params+=( "$item" )
+  done < <(validate_and_enforce_required_overrides "${params[@]}")
+
+  if [[ ${#validated_params[@]} -gt 0 ]]; then
+    args+=( --parameter-overrides "${validated_params[@]}" )
   fi
 
   aws_cmd "${args[@]}"

@@ -1,5 +1,5 @@
 name: "CloudFormation Deploy (dynamic params)"
-description: "Deploy CloudFormation stack; builds parameter-overrides from a config file and/or inline overrides; deletes stack in ROLLBACK_COMPLETE then redeploys."
+description: "Deploy CloudFormation stack; builds parameter-overrides from a config file and/or inline overrides; requires TagApplication, TagEnvironment, TagOwner, TagCostCenter, TagManagedBy, TagRepository, TagStackName (TagStackName auto-filled from stack_name if omitted); deletes stack in ROLLBACK_COMPLETE then redeploys."
 inputs:
   stack_name:
     description: "CloudFormation stack name to create or update."
@@ -11,6 +11,31 @@ inputs:
     description: "AWS region for the deployment."
     required: true
 
+  tag_application:
+    description: "Value for template parameter TagApplication (recommended to set here instead of in parameters_file)."
+    required: false
+    default: ""
+  tag_environment:
+    description: "Value for template parameter TagEnvironment (recommended to set here instead of in parameters_file)."
+    required: false
+    default: ""
+  tag_owner:
+    description: "Value for template parameter TagOwner (recommended to set here instead of in parameters_file)."
+    required: false
+    default: ""
+  tag_cost_center:
+    description: "Value for template parameter TagCostCenter (recommended to set here instead of in parameters_file)."
+    required: false
+    default: ""
+  tag_managed_by:
+    description: "Value for template parameter TagManagedBy (recommended to set here instead of in parameters_file)."
+    required: false
+    default: ""
+  tag_repository:
+    description: "Value for template parameter TagRepository. If omitted, defaults to the current GitHub repo URL when available."
+    required: false
+    default: ""
+
   capabilities:
     description: "Space-separated CloudFormation capabilities to pass to the deploy command."
     required: false
@@ -18,13 +43,13 @@ inputs:
 
   # New: read parameters from file
   parameters_file:
-    description: "Path to file with Key=Value lines (comments with # allowed)"
+    description: "Path to file with Key=Value lines (comments with # allowed). Tag* parameters can be provided here or via tag_* inputs."
     required: false
     default: ""
 
   # Optional: inline extra overrides (space-separated Key=Value pairs)
   parameter_overrides:
-    description: "Space-separated Key=Value pairs to pass as parameter overrides."
+    description: "Space-separated Key=Value pairs to pass as parameter overrides. Tag* parameters can be provided here or via tag_* inputs."
     required: false
     default: ""
 
@@ -50,6 +75,12 @@ runs:
         AWS_REGION: ${{ inputs.region }}
         CFN_STACK_NAME: ${{ inputs.stack_name }}
         CFN_TEMPLATE_FILE: ${{ inputs.template_file }}
+        CFN_TAG_APPLICATION: ${{ inputs.tag_application }}
+        CFN_TAG_ENVIRONMENT: ${{ inputs.tag_environment }}
+        CFN_TAG_OWNER: ${{ inputs.tag_owner }}
+        CFN_TAG_COST_CENTER: ${{ inputs.tag_cost_center }}
+        CFN_TAG_MANAGED_BY: ${{ inputs.tag_managed_by }}
+        CFN_TAG_REPOSITORY: ${{ inputs.tag_repository }}
         CFN_CAPABILITIES: ${{ inputs.capabilities }}
         CFN_PARAMETERS_FILE: ${{ inputs.parameters_file }}
         CFN_PARAMETER_OVERRIDES: ${{ inputs.parameter_overrides }}
