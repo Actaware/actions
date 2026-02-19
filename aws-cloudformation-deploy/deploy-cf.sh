@@ -2,7 +2,9 @@
 set -euo pipefail
 
 STACK_NAME="${CFN_STACK_NAME:?CFN_STACK_NAME is required}"
-TEMPLATE_FILE="${CFN_TEMPLATE_FILE:?CFN_TEMPLATE_FILE is required}"
+TEMPLATE_SOURCE="${CFN_TEMPLATE_FILE:?CFN_TEMPLATE_FILE is required}"
+TEMPLATE_FILE=""
+TEMPLATE_FILE_IS_TEMP="false"
 REGION="${AWS_REGION:?AWS_REGION is required}"
 
 CAPABILITIES="${CFN_CAPABILITIES:-}"
@@ -19,6 +21,33 @@ TAG_MANAGED_BY="${CFN_TAG_MANAGED_BY:-}"
 TAG_REPOSITORY="${CFN_TAG_REPOSITORY:-}"
 
 aws_cmd() { aws --region "$REGION" "$@"; }
+
+cleanup_template_file() {
+  if [[ "$TEMPLATE_FILE_IS_TEMP" == "true" && -n "$TEMPLATE_FILE" && -f "$TEMPLATE_FILE" ]]; then
+    rm -f "$TEMPLATE_FILE"
+  fi
+}
+
+resolve_template_file() {
+  if [[ "$TEMPLATE_SOURCE" == s3://* ]]; then
+    local tmp_dir="${RUNNER_TEMP:-/tmp}"
+    TEMPLATE_FILE="$(mktemp "${tmp_dir%/}/cfn-template.XXXXXX")"
+    TEMPLATE_FILE_IS_TEMP="true"
+    echo "Downloading CloudFormation template from S3: $TEMPLATE_SOURCE"
+    aws_cmd s3 cp "$TEMPLATE_SOURCE" "$TEMPLATE_FILE" >/dev/null
+    return
+  fi
+
+  if [[ ! -f "$TEMPLATE_SOURCE" ]]; then
+    echo "Template file not found: $TEMPLATE_SOURCE" >&2
+    exit 1
+  fi
+
+  TEMPLATE_FILE="$TEMPLATE_SOURCE"
+  TEMPLATE_FILE_IS_TEMP="false"
+}
+
+trap cleanup_template_file EXIT
 
 trim() {
   local s="${1-}"
@@ -252,6 +281,8 @@ deploy_stack() {
   aws_cmd "${args[@]}"
   echo "Deploy completed."
 }
+
+resolve_template_file
 
 status="$(get_stack_status)"
 echo "Current stack status: $status"

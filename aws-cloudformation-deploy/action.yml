@@ -5,7 +5,7 @@ inputs:
     description: "CloudFormation stack name to create or update."
     required: true
   template_file:
-    description: "Path to the CloudFormation template file (relative to repo root)."
+    description: "Path to a local CloudFormation template file (relative to repo root) or an s3:// URI."
     required: true
   region:
     description: "AWS region for the deployment."

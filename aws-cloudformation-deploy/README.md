@@ -2,6 +2,10 @@
 
 Composite action that deploys an AWS CloudFormation stack using `aws cloudformation deploy`.
 
+`template_file` accepts either:
+- a local template path (for example `infra/template.yaml`)
+- an S3 URI (for example `s3://my-bucket/templates/template.yaml`)
+
 ## Required parameter overrides
 
 This action enforces the following CloudFormation **template parameters** to be present in the final `--parameter-overrides` set (from `tag_*` inputs and/or `parameters_file` and/or `parameter_overrides`), and to have **non-empty** values:
@@ -31,4 +35,19 @@ This action enforces the following CloudFormation **template parameters** to be 
     parameters_file: infra/params/dev.env
     # or: parameter_overrides: >-
     #   TagApplication=datahub TagEnvironment=dev ...
+```
+
+## Example (template from S3)
+
+```yaml
+- uses: actaware/actions/aws-cloudformation-deploy@v1
+  with:
+    stack_name: dev-datahub-webapp
+    template_file: s3://my-infra-bucket/cloudformation/dev-datahub-webapp.yaml
+    region: us-east-1
+    tag_application: datahub
+    tag_environment: dev
+    tag_owner: backend_team
+    tag_cost_center: shared
+    tag_managed_by: cloudformation
 ```
