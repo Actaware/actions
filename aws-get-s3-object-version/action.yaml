@@ -10,14 +10,14 @@ inputs:
 
 outputs:
   version-id:
-    description: VersionId of uploaded object
+    description: VersionId of latest uploaded object
     value: ${{ steps.s3-upload.outputs.version-id }}
 
 runs:
   using: composite
   steps:
-    - name: Upload file to S3
-      id: "s3-upload"
+    - name: Get latest object version
+      id: "s3-latest-object-version"
       shell: bash
       run: |
         version_id=$(aws s3api list-object-versions \
