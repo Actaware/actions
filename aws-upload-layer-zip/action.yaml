@@ -47,7 +47,7 @@ runs:
 
     - name: Upload dependencies zip to S3
       id: "dependencies-zip-to-s3"
-      uses: "actaware/actions/s3-upload@dev"
+      uses: "actaware/actions/aws-s3-upload@dev"
       with:
         file-path: ${{ inputs.layer-file-name }}
         s3-bucket-name: ${{ inputs.s3-bucket-name }}
