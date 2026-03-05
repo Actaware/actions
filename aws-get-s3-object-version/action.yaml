@@ -11,7 +11,7 @@ inputs:
 outputs:
   version-id:
     description: VersionId of latest uploaded object
-    value: ${{ steps.s3-upload.outputs.version-id }}
+    value: ${{ steps.s3-latest-object-version.outputs.version-id }}
 
 runs:
   using: composite
