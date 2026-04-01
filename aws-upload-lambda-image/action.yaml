@@ -36,10 +36,12 @@ runs:
 
     - name: Create lamda image with gh token
       if: ${{ inputs.gh_token != '' }}
+      env:
+        GITHUB_TOKEN: ${{ inputs.gh_token }}
       shell: bash
       run: |
         export GH_TOKEN="${{ inputs.gh_token }}"
-        docker build . -t "${{ inputs.image-name }}" -f "${{ inputs.dockerfile-path }}" --secret id=gh_token,env=GH_TOKEN
+        docker build . -t "${{ inputs.image-name }}" -f "${{ inputs.dockerfile-path }}" --secret id=gh_token,env=GITHUB_TOKEN
 
     - name: Create ecr tags
       id: "ecr-tags"

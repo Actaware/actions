@@ -21,6 +21,10 @@ inputs:
   s3-layers-location:
     description: S3 location key for layers
     required: true
+  gh_token:
+    description: github token for private repo download
+    required: false
+    default: ""
 
 outputs:
   s3-object-version:
@@ -37,10 +41,15 @@ runs:
 
     - name: Create dependencies zip
       shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.gh_token }}
       run: |
         sudo apt install zip
         mkdir -p ./python
         python -m pip install --upgrade pip
+        if [ -n "$GITHUB_TOKEN" ]; then
+          git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/Actaware".insteadOf "https://github.com/Actaware"
+        fi
         pip install --platform ${{ inputs.platform }} --only-binary=:all: ${{ inputs.packages }} -t ./python
         zip -r ${{ inputs.layer-file-name }} ./python -x "*pycache*"
         rm -rf ./python
