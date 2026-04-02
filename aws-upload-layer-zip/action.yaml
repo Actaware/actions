@@ -39,18 +39,20 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
 
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+
     - name: Create dependencies zip
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.gh_token }}
       run: |
-        sudo apt install zip
+        sudo apt install -y zip
         mkdir -p ./python
-        python -m pip install --upgrade pip
         if [ -n "$GITHUB_TOKEN" ]; then
           git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/Actaware".insteadOf "https://github.com/Actaware"
         fi
-        pip install --platform ${{ inputs.platform }} --only-binary=:all: ${{ inputs.packages }} -t ./python
+        uv pip install --platform ${{ inputs.platform }} --only-binary=:all: ${{ inputs.packages }} -t ./python
         zip -r ${{ inputs.layer-file-name }} ./python -x "*pycache*"
         rm -rf ./python
 
