@@ -52,7 +52,8 @@ runs:
         if [ -n "$GITHUB_TOKEN" ]; then
           git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/Actaware".insteadOf "https://github.com/Actaware"
         fi
-        uv pip install --python-platform ${{ inputs.platform }} --only-binary=:all: ${{ inputs.packages }} --target ./python
+        python -m pip install --upgrade pip
+        pip install --platform ${{ inputs.platform }} --only-binary=:all: ${{ inputs.packages }} -t ./python
         zip -r ${{ inputs.layer-file-name }} ./python -x "*pycache*"
         rm -rf ./python
 
