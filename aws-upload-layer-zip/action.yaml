@@ -21,7 +21,7 @@ inputs:
   s3-layers-location:
     description: S3 location key for layers
     required: true
-  gh_token:
+  gh-token:
     description: github token for private repo download
     required: false
     default: ""
@@ -42,7 +42,7 @@ runs:
     - name: Create dependencies zip
       shell: bash
       env:
-        GITHUB_TOKEN: ${{ inputs.gh_token }}
+        GITHUB_TOKEN: ${{ inputs.gh-token }}
       run: |
         sudo apt install -y zip
         mkdir -p ./python

@@ -16,7 +16,7 @@ inputs:
   aws-region:
     description: aws region name
     required: true
-  gh_token:
+  gh-token:
     description: github token for private repo download
     required: false
     default: ""
@@ -30,14 +30,14 @@ runs:
   using: composite
   steps:
     - name: Create lamda image without gh token
-      if: ${{ inputs.gh_token == '' }}
+      if: ${{ inputs.gh-token == '' }}
       shell: bash
       run: docker build . -t "${{ inputs.image-name }}" -f "${{ inputs.dockerfile-path }}"
 
     - name: Create lamda image with gh token
-      if: ${{ inputs.gh_token != '' }}
+      if: ${{ inputs.gh-token != '' }}
       env:
-        GITHUB_TOKEN: ${{ inputs.gh_token }}
+        GITHUB_TOKEN: ${{ inputs.gh-token }}
       shell: bash
       run: docker build . -t "${{ inputs.image-name }}" -f "${{ inputs.dockerfile-path }}" --secret id=gh_token,env=GITHUB_TOKEN
 
