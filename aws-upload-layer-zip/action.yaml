@@ -4,11 +4,11 @@ inputs:
   python-version:
     description: version of python to use
     required: false
-    default: "3.11"
+    default: "3.12"
   platform:
     description: platform for python wheels
     required: false
-    default: "manylinux2014_x86_64"
+    default: "x86_64-manylinux_2_28"
   packages:
     description: packages to install
     required: true
@@ -34,11 +34,22 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Setup Python
-      uses: actions/setup-python@v5
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
       with:
         python-version: ${{ inputs.python-version }}
     
+    - name: Convert pip's platform to uv
+      id: convert-platform
+      shell: bash
+      run: |
+        platform="${{ inputs.platform }}"
+        case "$platform" in
+          manylinux2014_x86_64) platform="x86_64-manylinux_2_17" ;;
+          manylinux_2_28_x86_64) platform="x86_64-manylinux_2_28" ;;
+        esac
+        echo "platform=$platform" >> $GITHUB_OUTPUT
+
     - name: Create dependencies zip
       shell: bash
       env:
@@ -49,8 +60,7 @@ runs:
         if [ -n "$GITHUB_TOKEN" ]; then
           git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/Actaware".insteadOf "https://github.com/Actaware"
         fi
-        python -m pip install --upgrade pip
-        pip install --platform ${{ inputs.platform }} --only-binary=:all: ${{ inputs.packages }} -t ./python
+        uv pip install --python-platform ${{ steps.convert-platform.outputs.platform }} --only-binary=:all: ${{ inputs.packages }} --target ./python
         zip -r ${{ inputs.layer-file-name }} ./python -x "*pycache*"
         rm -rf ./python
 
