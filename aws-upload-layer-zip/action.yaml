@@ -29,6 +29,10 @@ inputs:
     description: Path to directory containing pre-built wheels
     required: false
     default: ""
+  no-binary-packages:
+    description: Space-separated list of packages to allow source builds for (e.g. private pure-Python packages with no PyPI wheel)
+    required: false
+    default: ""
 
 outputs:
   s3-object-version:
@@ -66,10 +70,13 @@ runs:
           git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/Actaware".insteadOf "https://github.com/Actaware"
         fi
 
+        NO_BINARY_FLAGS=$(echo "${{ inputs.no-binary-packages }}" | tr ' ' '\n' | grep -v '^$' | sed 's/^/--no-binary=/' | tr '\n' ' ')
+
         uv pip install \
           --python-platform ${{ steps.convert-platform.outputs.platform }} \
           --only-binary=:all: \
           ${{ inputs.find-links != '' && format('--find-links={0}', inputs.find-links) || '' }} \
+          $NO_BINARY_FLAGS \
           ${{ inputs.packages }} \
           --target ./python
 
