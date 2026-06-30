@@ -25,6 +25,11 @@ inputs:
     description: github token for private repo download
     required: false
     default: ""
+  find-links:
+    description: Path to directory containing pre-built wheels
+    required: false
+    default: ""
+
 
 outputs:
   s3-object-version:
@@ -60,7 +65,14 @@ runs:
         if [ -n "$GITHUB_TOKEN" ]; then
           git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/Actaware".insteadOf "https://github.com/Actaware"
         fi
-        uv pip install --python-platform ${{ steps.convert-platform.outputs.platform }} --only-binary=:all: ${{ inputs.packages }} --target ./python
+
+        uv pip install \
+          --python-platform ${{ steps.convert-platform.outputs.platform }} \
+          --only-binary=:all: \
+          ${{ inputs.find-links != '' && format('--find-links={0}', inputs.find-links) || '' }} \
+          ${{ inputs.packages }} \
+          --target ./python
+
         zip -r ${{ inputs.layer-file-name }} ./python -x "*pycache*"
         rm -rf ./python
 
