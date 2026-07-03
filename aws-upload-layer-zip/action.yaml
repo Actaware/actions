@@ -72,7 +72,7 @@ runs:
 
         NO_BINARY_FLAGS=""
         if [ -n "${{ inputs.no-binary-packages }}" ]; then
-          NO_BINARY_FLAGS=$(echo "${{ inputs.no-binary-packages }}" | tr ' ' '\n' | grep -v '^$' | sed 's/^/--no-binary=/' | tr '\n' ' ')
+          NO_BINARY_FLAGS=$(echo "${{ inputs.no-binary-packages }}" | tr ',' '\n' | grep -v '^$' | sed 's/^/--no-binary=/' | tr '\n' ' ')
         fi
 
         uv pip install \
